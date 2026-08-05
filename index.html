@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>항만 도로 특성 지도</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  :root{
+    --ink: #12202b;
+    --panel: #0f1e28;
+    --panel-2: #16303f;
+    --line: #26414f;
+    --paper: #eef2f0;
+    --paper-2: #ffffff;
+    --muted: #6f8592;
+    --accent: #ff8a3d;   /* signal / weight */
+    --accent-2: #35c2b8; /* speed */
+    --accent-3: #f2c14e; /* volume */
+    --text-on-dark: #dce8ee;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body{
+    font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Pretendard", system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  #app{
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: 100vh;
+  }
+  /* ---------- Sidebar ---------- */
+  #sidebar{
+    background: var(--panel);
+    color: var(--text-on-dark);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--line);
+    z-index: 10;
+  }
+  .brand{
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand .eyebrow{
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--accent-2);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .brand h1{
+    font-size: 18px;
+    margin: 0;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+  .brand p{
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .section{
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-title{
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    margin: 0 0 12px;
+  }
+  .metric-select{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .metric-btn{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-on-dark);
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .metric-btn .dot{
+    width: 9px; height: 9px; border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--muted);
+  }
+  .metric-btn:hover{ background: rgba(255,255,255,0.04); }
+  .metric-btn.active{
+    background: var(--panel-2);
+    border-color: var(--accent-2);
+  }
+  .metric-btn .sub{
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+
+  #legend{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .legend-title{
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .legend-row{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-on-dark);
+    font-variant-numeric: tabular-nums;
+  }
+  .swatch{
+    width: 22px; height: 6px; border-radius: 3px; flex-shrink: 0;
+  }
+  .legend-row.na .swatch{ background: repeating-linear-gradient(45deg, #3a4b55, #3a4b55 3px, #26414f 3px, #26414f 6px); }
+
+  #stats{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-box{
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .stat-box .num{
+    font-size: 19px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+  }
+  .stat-box .lbl{
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  #footer-note{
+    margin-top: auto;
+    padding: 14px 20px 18px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- Map ---------- */
+  #map{ width: 100%; height: 100%; background: #dbe6e2; }
+  .leaflet-popup-content-wrapper{
+    background: var(--panel);
+    color: var(--text-on-dark);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .leaflet-popup-tip{ background: var(--panel); }
+  .leaflet-popup-content{ margin: 14px 16px; width: 260px !important; }
+  .popup-road{
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: #fff;
+  }
+  .popup-id{
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .popup-grid{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+    font-size: 12.5px;
+  }
+  .popup-grid .k{ color: var(--muted); }
+  .popup-grid .v{ font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-on-dark); }
+  .popup-grid .v.hl{ color: var(--accent-3); }
+  .popup-empty{
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .leaflet-control-attribution{ font-size: 10px; }
+
+  #loading{
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--paper);
+    font-size: 13px;
+    color: var(--muted);
+    z-index: 999;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="brand">
+      <div class="eyebrow">Port Road Network</div>
+      <h1>부산항 도로별<br/>GPS 특성 지도</h1>
+      <p>표준노드링크에 매칭된 GPS 평균값을 도로 구간별로 시각화합니다. 항목을 선택해 색상 기준을 바꾸고, 도로를 클릭해 세부 데이터를 확인하세요.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">색상 기준</div>
+      <div class="metric-select" id="metric-select"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" id="legend-heading">범례</div>
+      <div id="legend"></div>
+    </div>
+
+    <div class="section" style="border-bottom:none;">
+      <div class="section-title">요약</div>
+      <div id="stats"></div>
+    </div>
+
+    <div id="footer-note">
+      LINK_ID · ROAD_NAME 등은 표준노드링크 속성, GPS 관련 항목(vehicle_count / avg_speed / sum_weight_kg)은 GPS 매칭 통계입니다. 데이터 없는 구간은 회색 점선으로 표시됩니다.
+    </div>
+  </div>
+  <div style="position:relative;">
+    <div id="loading">지도 불러오는 중…</div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ---------- 색상 기준(METRIC) 정의 ----------
+const METRICS = [
+  {
+    key: 'link_stats_import_avg_speed',
+    label: '평균 속도',
+    unit: 'km/h',
+    accent: '#35c2b8',
+    // 낮은 속도(정체) -> 붉은색, 높은 속도 -> 청록색 (교통 체증 감각에 맞춤: 낮을수록 경고색)
+    ramp: ['#c0392b', '#e67e22', '#f2c14e', '#7fc8a9', '#35c2b8'],
+    format: v => v.toFixed(1)
+  },
+  {
+    key: 'link_stats_import_vehicle_count',
+    label: '통행량',
+    unit: '대',
+    accent: '#f2c14e',
+    ramp: ['#1f4f5c', '#2e7f7a', '#7fc07a', '#f2c14e', '#ff8a3d'],
+    format: v => Math.round(v).toLocaleString()
+  },
+  {
+    key: 'link_stats_import_sum_weight_kg',
+    label: '총 통행 중량',
+    unit: 'kg',
+    accent: '#ff8a3d',
+    ramp: ['#1f4f5c', '#2e7f7a', '#7fc07a', '#f2c14e', '#ff8a3d'],
+    format: v => Math.round(v).toLocaleString()
+  },
+  {
+    key: 'ROAD_RANK',
+    label: '도로 등급',
+    unit: '',
+    accent: '#8ec6f0',
+    categorical: true,
+    categories: {
+      '101': { label: '고속국도', color: '#e63946' },
+      '103': { label: '일반국도', color: '#f2934d' },
+      '104': { label: '특별/광역시도', color: '#f2c14e' },
+      '105': { label: '시/군도', color: '#7fc8a9' },
+      '107': { label: '기타(단지 내)', color: '#8ec6f0' }
+    }
+  },
+  {
+    key: 'LANES',
+    label: '차로 수',
+    unit: '차로',
+    accent: '#a892d6',
+    categorical: true,
+    categories: {
+      2: { label: '2차로', color: '#8ec6f0' },
+      3: { label: '3차로', color: '#a892d6' },
+      4: { label: '4차로', color: '#e6739b' }
+    }
+  }
+];
+
+let currentMetricIndex = 0;
+let geoLayer = null;
+let allFeatures = [];
+
+// ---------- quantile 계산 ----------
+function quantileBins(values, n){
+  const sorted = [...values].sort((a,b)=>a-b);
+  const bins = [];
+  for(let i=1;i<n;i++){
+    bins.push(sorted[Math.floor(sorted.length * i / n)]);
+  }
+  return bins; // n-1개 경계값
+}
+
+function getColorForMetric(metric, props){
+  const val = props[metric.key];
+  if(val === null || val === undefined) return null;
+
+  if(metric.categorical){
+    const cat = metric.categories[val];
+    return cat ? cat.color : '#4a5f6a';
+  }
+
+  const bins = metric._bins;
+  const ramp = metric.ramp;
+  let idx = bins.findIndex(b => val <= b);
+  if(idx === -1) idx = ramp.length - 1;
+  return ramp[idx];
+}
+
+function computeBins(metric, features){
+  if(metric.categorical) return;
+  const vals = features
+    .map(f => f.properties[metric.key])
+    .filter(v => v !== null && v !== undefined);
+  metric._bins = quantileBins(vals, metric.ramp.length);
+  metric._min = Math.min(...vals);
+  metric._max = Math.max(...vals);
+}
+
+// ---------- 지도 초기화 ----------
+const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([35.09, 128.83], 13);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+  attribution: '',
+  maxZoom: 19,
+  pane: 'shadowPane'
+}).addTo(map);
+
+const ROAD_RANK_LABEL = {
+  '101': '고속국도', '103': '일반국도', '104': '특별/광역시도', '105': '시/군도', '107': '기타(단지 내도로)'
+};
+
+function popupHtml(props){
+  const metric = METRICS[currentMetricIndex];
+  const rows = [];
+  rows.push(['도로 등급', ROAD_RANK_LABEL[props.ROAD_RANK] || props.ROAD_RANK || '-']);
+  rows.push(['차로 수', props.LANES != null ? props.LANES + '차로' : '-']);
+  rows.push(['제한속도', props.MAX_SPD != null ? props.MAX_SPD + ' km/h' : '-']);
+  rows.push(['링크 길이', props.LENGTH != null ? Math.round(props.LENGTH).toLocaleString() + ' m' : '-']);
+
+  const hasStats = props.link_stats_import_avg_speed != null;
+  let statsHtml = '';
+  if(hasStats){
+    rows.push(['평균 속도(GPS)', props.link_stats_import_avg_speed.toFixed(1) + ' km/h', metric.key==='link_stats_import_avg_speed']);
+    rows.push(['통행량', Math.round(props.link_stats_import_vehicle_count).toLocaleString() + ' 대', metric.key==='link_stats_import_vehicle_count']);
+    rows.push(['총 통행 중량', Math.round(props.link_stats_import_sum_weight_kg).toLocaleString() + ' kg', metric.key==='link_stats_import_sum_weight_kg']);
+  }
+
+  const gridRows = rows.map(([k,v,hl]) => `<div class="k">${k}</div><div class="v${hl?' hl':''}">${v}</div>`).join('');
+
+  return `
+    <div class="popup-road">${props.ROAD_NAME || '(도로명 없음)'}</div>
+    <div class="popup-id">LINK_ID ${props.LINK_ID}</div>
+    <div class="popup-grid">${gridRows}</div>
+    ${hasStats ? '' : '<div class="popup-empty">이 구간은 매칭된 GPS 데이터가 없습니다.</div>'}
+  `;
+}
+
+function styleForFeature(feature){
+  const metric = METRICS[currentMetricIndex];
+  const color = getColorForMetric(metric, feature.properties);
+  if(color === null){
+    return { color: '#9fb0b7', weight: 2, opacity: 0.6, dashArray: '2,5' };
+  }
+  return { color, weight: 4, opacity: 0.9 };
+}
+
+function renderLayer(){
+  if(geoLayer) map.removeLayer(geoLayer);
+  geoLayer = L.geoJSON({ type: 'FeatureCollection', features: allFeatures }, {
+    style: styleForFeature,
+    onEachFeature: (feature, layer) => {
+      layer.bindPopup(popupHtml(feature.properties));
+      layer.on('mouseover', () => layer.setStyle({ weight: 7 }));
+      layer.on('mouseout', () => layer.setStyle(styleForFeature(feature)));
+    }
+  }).addTo(map);
+}
+
+function renderLegend(){
+  const metric = METRICS[currentMetricIndex];
+  document.getElementById('legend-heading').textContent = `범례 · ${metric.label}`;
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+
+  if(metric.categorical){
+    Object.values(metric.categories).forEach(cat => {
+      const row = document.createElement('div');
+      row.className = 'legend-row';
+      row.innerHTML = `<div class="swatch" style="background:${cat.color}"></div><div>${cat.label}</div>`;
+      el.appendChild(row);
+    });
+  } else {
+    const bins = metric._bins;
+    const edges = [metric._min, ...bins, metric._max];
+    metric.ramp.forEach((color, i) => {
+      const lo = edges[i];
+      const hi = edges[i+1];
+      const row = document.createElement('div');
+      row.className = 'legend-row';
+      row.innerHTML = `<div class="swatch" style="background:${color}"></div><div>${metric.format(lo)} – ${metric.format(hi)} ${metric.unit}</div>`;
+      el.appendChild(row);
+    });
+  }
+  const naRow = document.createElement('div');
+  naRow.className = 'legend-row na';
+  naRow.innerHTML = `<div class="swatch"></div><div>데이터 없음</div>`;
+  el.appendChild(naRow);
+}
+
+function renderMetricButtons(){
+  const el = document.getElementById('metric-select');
+  el.innerHTML = '';
+  METRICS.forEach((m, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'metric-btn' + (i === currentMetricIndex ? ' active' : '');
+    const n = allFeatures.filter(f => f.properties[m.key] !== null && f.properties[m.key] !== undefined).length;
+    btn.innerHTML = `<span class="dot" style="background:${m.accent}"></span><span>${m.label}</span><span class="sub">${n}개 구간</span>`;
+    btn.addEventListener('click', () => {
+      currentMetricIndex = i;
+      renderMetricButtons();
+      renderLegend();
+      renderLayer();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function renderStats(){
+  const withStats = allFeatures.filter(f => f.properties.link_stats_import_avg_speed != null);
+  const totalWeight = withStats.reduce((s,f) => s + (f.properties.link_stats_import_sum_weight_kg || 0), 0);
+  const totalVeh = withStats.reduce((s,f) => s + (f.properties.link_stats_import_vehicle_count || 0), 0);
+  const boxes = [
+    { num: allFeatures.length.toLocaleString(), lbl: '전체 도로 구간' },
+    { num: withStats.length.toLocaleString(), lbl: 'GPS 매칭 구간' },
+    { num: Math.round(totalVeh).toLocaleString(), lbl: '누적 통행 대수' },
+    { num: Math.round(totalWeight/1000).toLocaleString() + ' t', lbl: '누적 통행 중량' }
+  ];
+  const el = document.getElementById('stats');
+  el.innerHTML = boxes.map(b => `<div class="stat-box"><div class="num">${b.num}</div><div class="lbl">${b.lbl}</div></div>`).join('');
+}
+
+// ---------- 데이터 로드 ----------
+fetch('./data.geojson')
+  .then(r => r.json())
+  .then(data => {
+    allFeatures = data.features;
+    METRICS.forEach(m => computeBins(m, allFeatures));
+    document.getElementById('loading').style.display = 'none';
+    renderMetricButtons();
+    renderLegend();
+    renderStats();
+    renderLayer();
+
+    const bounds = L.geoJSON(data).getBounds();
+    map.fitBounds(bounds, { padding: [30,30] });
+  })
+  .catch(err => {
+    document.getElementById('loading').textContent = '데이터를 불러오지 못했습니다: ' + err.message;
+  });
+</script>
+</body>
+</html>
