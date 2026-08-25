@@ -214,13 +214,14 @@ const SCENARIOS = [
   { key: 'import',  label: '수입' },
   { key: 'shuttle', label: '셔틀', warn: '셔틀 시나리오 값이 현재 전체(Total) 값과 동일합니다. QGIS에서 셔틀 전용으로 내보내신 파일이 맞는지 한 번 확인해주세요.' }
 ];
+const QGIS_PALETTE = ['#e05252', '#5aa15c', '#b5a642', '#e08a3c', '#e8a0b4'];
 const FIELDS = [
   { key: 'vehicle_count',  label: '평균 교통량', unit: '대',
-    ramp: ['#1f4f5c', '#2e7f7a', '#7fc07a', '#f2c14e', '#ff8a3d'], format: v => Math.round(v).toLocaleString() },
+    ramp: QGIS_PALETTE, format: v => Math.round(v).toLocaleString() },
   { key: 'avg_speed',      label: '평균 주행속도', unit: 'km/h',
-    ramp: ['#c0392b', '#e67e22', '#f2c14e', '#7fc8a9', '#35c2b8'], format: v => v.toFixed(1) },
+    ramp: QGIS_PALETTE, format: v => v.toFixed(1) },
   { key: 'sum_weight_kg',  label: '합계 물동량', unit: 'kg',
-    ramp: ['#1f4f5c', '#2e7f7a', '#7fc07a', '#f2c14e', '#ff8a3d'], format: v => Math.round(v).toLocaleString() }
+    ramp: QGIS_PALETTE, format: v => Math.round(v).toLocaleString() }
 ];
 const STRUCT_METRICS = [
   {
@@ -248,7 +249,7 @@ const TERMINALS = [
   { key: 'BCT',   label: 'BCT',   file: null },
   { key: 'HJNC',  label: 'HJNC',  file: null }
 ];
-const ROUTE_RAMP = ['#1f4f5c', '#2e7f7a', '#7fc07a', '#f2c14e', '#ff8a3d'];
+const ROUTE_RAMP = QGIS_PALETTE;
 
 let mode = 'gps'; // 'gps' | 'structure' | 'routes'
 let currentScenario = 0;
@@ -259,6 +260,48 @@ let geoLayer = null;
 let routeLayer = null;
 let allFeatures = [];
 const routeDataCache = {};
+
+// 자연분류(Jenks Natural Breaks) 알고리즘 - QGIS의 "Natural Breaks (Jenks)"와 동일한 방식
+function jenksBins(values, n){
+  const data = [...new Set(values)].sort((a,b)=>a-b);
+  if(data.length <= n) return data.slice(1);
+
+  const mat1 = Array.from({length: data.length+1}, () => new Array(n+1).fill(0));
+  const mat2 = Array.from({length: data.length+1}, () => new Array(n+1).fill(0));
+  for(let i=1;i<=n;i++){
+    mat1[1][i] = 1; mat2[1][i] = 0;
+    for(let j=2;j<=data.length;j++) mat2[j][i] = Infinity;
+  }
+  let v = 0;
+  for(let l=2;l<=data.length;l++){
+    let s1=0,s2=0,w=0;
+    for(let m=1;m<=l;m++){
+      const i3 = l-m+1;
+      const val = data[i3-1];
+      s2 += val*val; s1 += val; w++;
+      v = s2 - (s1*s1)/w;
+      const i4 = i3-1;
+      if(i4 !== 0){
+        for(let j=2;j<=n;j++){
+          if(mat2[l][j] >= (v + mat2[i4][j-1])){
+            mat1[l][j] = i3; mat2[l][j] = v + mat2[i4][j-1];
+          }
+        }
+      }
+    }
+    mat1[l][1] = 1; mat2[l][1] = v;
+  }
+  const kBreaks = new Array(n).fill(0);
+  kBreaks[n-1] = data[data.length-1];
+  kBreaks[0] = data[0];
+  let k = data.length;
+  for(let j=n;j>=2;j--){
+    const id = mat1[k][j]-2;
+    kBreaks[j-2] = data[id];
+    k = mat1[k][j]-1;
+  }
+  return kBreaks.slice(1, n); // n-1개 경계값 (첫/끝 제외)
+}
 
 function quantileBins(values, n){
   const sorted = [...values].sort((a,b)=>a-b);
@@ -276,7 +319,7 @@ function computeAllBins(){
       const vals = allFeatures.map(f => f.properties[k]).filter(v => v !== null && v !== undefined);
       fl._bins = fl._bins || {};
       fl._range = fl._range || {};
-      fl._bins[sc.key] = quantileBins(vals, fl.ramp.length);
+      fl._bins[sc.key] = jenksBins(vals, fl.ramp.length);
       fl._range[sc.key] = [vals.length ? Math.min(...vals) : 0, vals.length ? Math.max(...vals) : 0];
     });
   });
@@ -356,7 +399,7 @@ function popupHtml(props){
 function styleForFeature(feature){
   const color = currentColorFn()(feature.properties);
   if(color === null) return { color: '#9fb0b7', weight: 2, opacity: 0.6, dashArray: '2,5' };
-  return { color, weight: 4, opacity: 0.9 };
+  return { color, weight: 2.5, opacity: 0.85 };
 }
 
 function renderLayer(){
@@ -366,7 +409,7 @@ function renderLayer(){
     style: styleForFeature,
     onEachFeature: (feature, layer) => {
       layer.bindPopup(popupHtml(feature.properties));
-      layer.on('mouseover', () => layer.setStyle({ weight: 7 }));
+      layer.on('mouseover', () => layer.setStyle({ weight: 4.5 }));
       layer.on('mouseout', () => layer.setStyle(styleForFeature(feature)));
     }
   }).addTo(map);
@@ -530,7 +573,7 @@ function loadAndRenderRoute(key){
     routeDataCache[key] = data;
     document.getElementById('loading').style.display = 'none';
     const counts = data.features.map(f => f.properties.count).filter(v => v != null);
-    const bins = quantileBins(counts, ROUTE_RAMP.length);
+    const bins = jenksBins(counts, ROUTE_RAMP.length);
     const minV = Math.min(...counts), maxV = Math.max(...counts);
 
     routeLayer = L.geoJSON(data, {
@@ -538,7 +581,7 @@ function loadAndRenderRoute(key){
         const v = feature.properties.count;
         let idx = bins.findIndex(b => v <= b);
         if(idx === -1) idx = ROUTE_RAMP.length - 1;
-        return { color: ROUTE_RAMP[idx], weight: 2 + idx * 0.6, opacity: 0.9 };
+        return { color: ROUTE_RAMP[idx], weight: 2.5, opacity: 0.85 };
       },
       onEachFeature: (feature, layer) => {
         const p = feature.properties;
