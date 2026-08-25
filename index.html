@@ -211,11 +211,15 @@
 
     <div class="section" style="border-bottom:none;">
       <div class="section-title">터미널 명칭</div>
-      <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer; margin-bottom:8px;">
         <input type="checkbox" id="toggle-terminal-labels" style="accent-color:#35c2b8;" />
         지도에 터미널 이름 표시
       </label>
-      <div class="warn-box" style="display:block; margin-top:8px;">라벨 위치는 참고용 근사치입니다. 정확한 경계 좌표를 주시면 실제 위치로 교체해드릴게요.</div>
+      <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+        <input type="checkbox" id="toggle-satellite" style="accent-color:#35c2b8;" />
+        위성 지도로 보기
+      </label>
+      <div class="warn-box" style="display:block; margin-top:8px;">라벨 위치는 참고용 근사치입니다. 위성 지도를 켜고 라벨을 드래그해서 실제 위치로 옮겨보세요 — 마커 위에 좌표가 표시됩니다. 정확한 값을 알려주시면 고정해드릴게요.</div>
     </div>
 
     <div id="footer-note">
@@ -375,12 +379,25 @@ function currentColorFn(){ return mode === 'gps' ? getGpsColor : getStructColor;
 // ---------- 지도 초기화 ----------
 const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([35.09, 128.83], 13);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+const lightBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 19
 }).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+const lightLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
   attribution: '', maxZoom: 19, pane: 'shadowPane'
 }).addTo(map);
+const satelliteBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles &copy; Esri', maxZoom: 19
+});
+
+function setBasemap(satellite){
+  if(satellite){
+    map.removeLayer(lightBase); map.removeLayer(lightLabels);
+    satelliteBase.addTo(map);
+  } else {
+    map.removeLayer(satelliteBase);
+    lightBase.addTo(map); lightLabels.addTo(map);
+  }
+}
 
 const ROAD_RANK_LABEL = { '101': '고속국도', '103': '일반국도', '104': '특별/광역시도', '105': '시/군도', '107': '기타(단지 내도로)' };
 
@@ -531,14 +548,15 @@ function renderStructButtons(){
 }
 
 const TERMINAL_LABELS = [
-  // 근사 좌표 (사진 배치 + 공식 부두 순서 1부두=PNIT~7부두=DGT 참고). 정확한 값 아님.
-  { key: 'DGT',  lat: 35.0870, lon: 128.7655 },
-  { key: 'HJNC', lat: 35.0835, lon: 128.7940 },
-  { key: 'PNC',  lat: 35.0825, lon: 128.8180 },
-  { key: 'PNIT', lat: 35.0825, lon: 128.8430 },
-  { key: 'BCT',  lat: 35.0605, lon: 128.8010 },
-  { key: 'BNCT', lat: 35.0640, lon: 128.8280 },
-  { key: 'HPNT', lat: 35.0660, lon: 128.8480 }
+  // 터미널별 주요 이동경로 데이터 중 통행량 상위 5% 구간의 무게중심으로 추정한 위치.
+  // 공식 부두 경계 좌표가 아니므로 참고용입니다.
+  { key: 'DGT',  lat: 35.0845, lon: 128.7931 },
+  { key: 'HJNC', lat: 35.0835, lon: 128.7838 },
+  { key: 'PNC',  lat: 35.0850, lon: 128.8028 },
+  { key: 'PNIT', lat: 35.0771, lon: 128.8178 },
+  { key: 'HPNT', lat: 35.0767, lon: 128.8160 },
+  { key: 'BNCT', lat: 35.0774, lon: 128.8272 },
+  { key: 'BCT',  lat: 35.0605, lon: 128.8010 }
 ];
 let terminalLabelLayer = null;
 
@@ -546,19 +564,28 @@ function renderTerminalLabels(show){
   if(terminalLabelLayer){ map.removeLayer(terminalLabelLayer); terminalLabelLayer = null; }
   if(!show) return;
   terminalLabelLayer = L.layerGroup(TERMINAL_LABELS.map(t => {
-    return L.marker([t.lat, t.lon], {
+    const marker = L.marker([t.lat, t.lon], {
       icon: L.divIcon({
         className: 'terminal-label-icon',
         html: `<div class="terminal-label">${t.key}</div>`,
         iconSize: [null, null]
       }),
-      interactive: false
+      draggable: true
     });
+    marker.bindTooltip(`위도 ${t.lat.toFixed(4)}, 경도 ${t.lon.toFixed(4)}`, { permanent: false, direction: 'top' });
+    marker.on('drag', (e) => {
+      const p = e.target.getLatLng();
+      marker.setTooltipContent(`위도 ${p.lat.toFixed(4)}, 경도 ${p.lng.toFixed(4)}`);
+    });
+    return marker;
   })).addTo(map);
 }
 
 document.getElementById('toggle-terminal-labels').addEventListener('change', (e) => {
   renderTerminalLabels(e.target.checked);
+});
+document.getElementById('toggle-satellite').addEventListener('change', (e) => {
+  setBasemap(e.target.checked);
 });
 
 document.getElementById('tab-gps').addEventListener('click', () => {
