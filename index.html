@@ -128,7 +128,7 @@
   .popup-grid .k{ color: var(--muted); }
   .popup-grid .v{ font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-on-dark); }
   .popup-grid .v.hl{ color: var(--accent-3); }
-  .popup-compare{ display:grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 4px 8px; font-size: 11.5px; margin-top:2px; }
+  .popup-compare{ display:grid; grid-template-columns: 80px repeat(4, 1fr); gap: 4px 6px; font-size: 11px; margin-top:2px; }
   .popup-compare .h{ color: var(--muted); font-weight:700; font-size:10.5px; }
   .popup-compare .rowlabel{ color: var(--muted); }
   .popup-compare .cell{ text-align:right; font-variant-numeric: tabular-nums; }
@@ -413,8 +413,8 @@ function popupHtml(props){
   const anyStats = SCENARIOS.some(sc => props[`${sc.key}_${fl.key}`] != null);
   let compareHtml = '';
   if(anyStats){
-    const header = `<div class="h"></div>` + SCENARIOS.map((sc,i) => `<div class="h" style="text-align:right;">${sc.label}</div>`).join('');
-    const rows = FIELDS.map(f => {
+      const header = `<div class="h">항목</div>` + SCENARIOS.map((sc,i) => `<div class="h" style="text-align:right;">${sc.label}</div>`).join('');
+      const rows = FIELDS.map(f => {
       const cells = SCENARIOS.map((sc,i) => {
         const v = props[`${sc.key}_${f.key}`];
         const isCur = (i === currentScenario && f.key === fl.key);
