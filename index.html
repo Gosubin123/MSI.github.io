@@ -214,14 +214,15 @@ const SCENARIOS = [
   { key: 'import',  label: '수입' },
   { key: 'shuttle', label: '셔틀', warn: '셔틀 시나리오 값이 현재 전체(Total) 값과 동일합니다. QGIS에서 셔틀 전용으로 내보내신 파일이 맞는지 한 번 확인해주세요.' }
 ];
-const QGIS_PALETTE = ['#e05252', '#5aa15c', '#b5a642', '#e08a3c', '#e8a0b4'];
+const QGIS_PALETTE = ['#d73027', '#fc8d59', '#fee08b', '#91cf60', '#1a9850']; // 낮음(빨강) -> 높음(초록)
+const QGIS_PALETTE_REV = [...QGIS_PALETTE].reverse(); // 낮음(초록) -> 높음(빨강)
 const FIELDS = [
   { key: 'vehicle_count',  label: '평균 교통량', unit: '대',
-    ramp: QGIS_PALETTE, format: v => Math.round(v).toLocaleString() },
+    ramp: QGIS_PALETTE_REV, format: v => Math.round(v).toLocaleString() },
   { key: 'avg_speed',      label: '평균 주행속도', unit: 'km/h',
     ramp: QGIS_PALETTE, format: v => v.toFixed(1) },
   { key: 'sum_weight_kg',  label: '합계 물동량', unit: 'kg',
-    ramp: QGIS_PALETTE, format: v => Math.round(v).toLocaleString() }
+    ramp: QGIS_PALETTE_REV, format: v => Math.round(v).toLocaleString() }
 ];
 const STRUCT_METRICS = [
   {
@@ -249,7 +250,7 @@ const TERMINALS = [
   { key: 'BCT',   label: 'BCT',   file: null },
   { key: 'HJNC',  label: 'HJNC',  file: null }
 ];
-const ROUTE_RAMP = QGIS_PALETTE;
+const ROUTE_RAMP = QGIS_PALETTE_REV; // 통행량 높음 = 빨강
 
 let mode = 'gps'; // 'gps' | 'structure' | 'routes'
 let currentScenario = 0;
