@@ -265,7 +265,7 @@ const routeDataCache = {};
 // 자연분류(Jenks Natural Breaks) 알고리즘 - QGIS의 "Natural Breaks (Jenks)"와 동일한 방식
 function jenksBins(values, n){
   const data = [...new Set(values)].sort((a,b)=>a-b);
-  if(data.length <= n) return data.slice(1);
+  if(data.length <= n) return data.slice(0, -1);
 
   const mat1 = Array.from({length: data.length+1}, () => new Array(n+1).fill(0));
   const mat2 = Array.from({length: data.length+1}, () => new Array(n+1).fill(0));
@@ -292,16 +292,17 @@ function jenksBins(values, n){
     }
     mat1[l][1] = 1; mat2[l][1] = v;
   }
-  const kBreaks = new Array(n).fill(0);
-  kBreaks[n-1] = data[data.length-1];
+  // kBreaks: 길이 n+1 배열 [min, break1, ..., break(n-1), max]
+  const kBreaks = new Array(n+1).fill(0);
+  kBreaks[n] = data[data.length-1];
   kBreaks[0] = data[0];
   let k = data.length;
-  for(let j=n;j>=2;j--){
-    const id = mat1[k][j]-2;
-    kBreaks[j-2] = data[id];
-    k = mat1[k][j]-1;
+  for(let countNum = n; countNum > 1; countNum--){
+    const id = mat1[k][countNum]-2;
+    kBreaks[countNum-1] = data[id];
+    k = mat1[k][countNum]-1;
   }
-  return kBreaks.slice(1, n); // n-1개 경계값 (첫/끝 제외)
+  return kBreaks.slice(1, n); // 내부 경계값 n-1개 (min, max 제외)
 }
 
 function quantileBins(values, n){
