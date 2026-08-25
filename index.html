@@ -548,15 +548,14 @@ function renderStructButtons(){
 }
 
 const TERMINAL_LABELS = [
-  // 터미널별 주요 이동경로 데이터 중 통행량 상위 5% 구간의 무게중심으로 추정한 위치.
-  // 공식 부두 경계 좌표가 아니므로 참고용입니다.
-  { key: 'DGT',  lat: 35.0845, lon: 128.7931 },
-  { key: 'HJNC', lat: 35.0835, lon: 128.7838 },
-  { key: 'PNC',  lat: 35.0850, lon: 128.8028 },
-  { key: 'PNIT', lat: 35.0771, lon: 128.8178 },
-  { key: 'HPNT', lat: 35.0767, lon: 128.8160 },
-  { key: 'BNCT', lat: 35.0774, lon: 128.8272 },
-  { key: 'BCT',  lat: 35.0605, lon: 128.8010 }
+  // 위성 지도에서 직접 확인한 좌표 (사용자 제공, 2026-08)
+  { key: 'DGT',  lat: 35.0805, lon: 128.7702 },
+  { key: 'HJNC', lat: 35.0801, lon: 128.7913 },
+  { key: 'PNC',  lat: 35.0802, lon: 128.8073 },
+  { key: 'PNIT', lat: 35.0803, lon: 128.8253 },
+  { key: 'HPNT', lat: 35.0683, lon: 128.8267 },
+  { key: 'BCT',  lat: 35.0630, lon: 128.8003 },
+  { key: 'BNCT', lat: 35.0654, lon: 128.8122 }
 ];
 let terminalLabelLayer = null;
 
