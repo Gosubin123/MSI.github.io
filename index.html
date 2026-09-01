@@ -48,7 +48,7 @@
   .tabs{ display:flex; gap:6px; padding: 14px 20px 0; }
   .tab{
     flex:1; text-align:center; padding: 8px 4px; border-radius: 7px;
-    font-size: 11px; font-weight:600; cursor:pointer; color: var(--muted);
+    font-size: 12px; font-weight:600; cursor:pointer; color: var(--muted);
     border: 1px solid var(--line); background: transparent;
     font-family: inherit; white-space: nowrap;
   }
@@ -117,7 +117,7 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
   }
   .leaflet-popup-tip{ background: var(--panel); }
-  .leaflet-popup-content{ margin: 14px 16px; width: 340px !important; }
+  .leaflet-popup-content{ margin: 14px 16px; width: 280px !important; }
   .popup-road{ font-size: 15px; font-weight: 700; margin-bottom: 2px; color: #fff; }
   .popup-id{ font-size: 10.5px; color: var(--muted); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
   .popup-section-title{
@@ -128,7 +128,7 @@
   .popup-grid .k{ color: var(--muted); }
   .popup-grid .v{ font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-on-dark); }
   .popup-grid .v.hl{ color: var(--accent-3); }
-  .popup-compare{ display:grid; grid-template-columns: 90px repeat(4, 1fr); gap: 4px 8px; font-size: 11px; margin-top:2px; }
+  .popup-compare{ display:grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 4px 8px; font-size: 11.5px; margin-top:2px; }
   .popup-compare .h{ color: var(--muted); font-weight:700; font-size:10.5px; }
   .popup-compare .rowlabel{ color: var(--muted); }
   .popup-compare .cell{ text-align:right; font-variant-numeric: tabular-nums; }
@@ -162,7 +162,7 @@
   <div id="sidebar">
     <div class="brand">
       <div class="eyebrow">Port Road Network</div>
-      <h1>부산신항 도로별<br/>GPS 특성 지도</h1>
+      <h1>부산항 도로별<br/>GPS 특성 지도</h1>
       <p>표준노드링크에 매칭된 시나리오별 GPS 통계를 도로 구간 색상으로 확인하세요.</p>
     </div>
 
@@ -219,6 +219,7 @@
         <input type="checkbox" id="toggle-satellite" style="accent-color:#35c2b8;" />
         위성 지도로 보기
       </label>
+      <div class="warn-box" style="display:block; margin-top:8px;">라벨 위치는 참고용 근사치입니다. 위성 지도를 켜고 라벨을 드래그해서 실제 위치로 옮겨보세요 — 마커 위에 좌표가 표시됩니다. 정확한 값을 알려주시면 고정해드릴게요.</div>
     </div>
 
     <div id="footer-note">
@@ -378,12 +379,10 @@ function currentColorFn(){ return mode === 'gps' ? getGpsColor : getStructColor;
 // ---------- 지도 초기화 ----------
 const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([35.09, 128.83], 13);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-const lightBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+const lightBase = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors', maxZoom: 20
 }).addTo(map);
-const lightLabels = L.tileLayer('', {
-  attribution: '', maxZoom: 19, pane: 'shadowPane'
-});
+const lightLabels = null; // Stadia Alidade Smooth includes labels in one layer
 const satelliteBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution: 'Tiles &copy; Esri', maxZoom: 19
 });
@@ -413,8 +412,8 @@ function popupHtml(props){
   const anyStats = SCENARIOS.some(sc => props[`${sc.key}_${fl.key}`] != null);
   let compareHtml = '';
   if(anyStats){
-      const header = `<div class="h">항목</div>` + SCENARIOS.map((sc,i) => `<div class="h" style="text-align:right;">${sc.label}</div>`).join('');
-      const rows = FIELDS.map(f => {
+    const header = `<div class="h"></div>` + SCENARIOS.map((sc,i) => `<div class="h" style="text-align:right;">${sc.label}</div>`).join('');
+    const rows = FIELDS.map(f => {
       const cells = SCENARIOS.map((sc,i) => {
         const v = props[`${sc.key}_${f.key}`];
         const isCur = (i === currentScenario && f.key === fl.key);
