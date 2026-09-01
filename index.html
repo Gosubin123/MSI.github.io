@@ -379,10 +379,13 @@ function currentColorFn(){ return mode === 'gps' ? getGpsColor : getStructColor;
 // ---------- 지도 초기화 ----------
 const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([35.09, 128.83], 13);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-const lightBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19
+const lightBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  maxZoom: 19
 }).addTo(map);
-const lightLabels = null;
+const lightLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+  attribution: '', maxZoom: 19, pane: 'shadowPane'
+}).addTo(map);
 const satelliteBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution: 'Tiles &copy; Esri', maxZoom: 19
 });
@@ -390,10 +393,12 @@ const satelliteBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/s
 function setBasemap(satellite){
   if(satellite){
     map.removeLayer(lightBase);
+    if(lightLabels) map.removeLayer(lightLabels);
     satelliteBase.addTo(map);
   } else {
     map.removeLayer(satelliteBase);
     lightBase.addTo(map);
+    if(lightLabels) lightLabels.addTo(map);
   }
 }
 
